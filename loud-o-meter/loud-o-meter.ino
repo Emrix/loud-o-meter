@@ -1,26 +1,3 @@
-/*
-Hardware requirements:
-  Most Arduino or Arduino-compatible boards (ATmega 328P or better).
-  Any sort of RGB light strand that FastLED supports
-Software requirements:
-  FastLED
-
-Connections:
-  3.3V to mic amp +
-  GND to mic amp -
-  Analog pin 0 (A0) to microphone output
-  Digital pin 13 (13) to LED data input
-  3.3V to AREF
-
-Written by Matt Ricks
-
-fscale function:
-Floating Point Autoscale Function V0.1
-Written by Paul Badger 2007
-Modified from code by Greg Shakar
-
-*/
-
 //Libraries
 #include "FastLED.h"
 #include <math.h>
@@ -57,7 +34,19 @@ int RESET = 30;
 unsigned int sample;
 CRGB strip[NUMBER_OF_PIXELS];
 
-//Global Functions
+
+void setup() {
+  Serial.begin(9600);
+  Serial.println(CRGB::Red);
+  analogReference(EXTERNAL);
+  FastLED.addLeds < LED_TYPE, LED_PIN, COLOR_ORDER > (strip, NUMBER_OF_PIXELS);
+  for (int x = 0; x < NUMBER_OF_PIXELS; x++) {
+    strip[x] = CRGB::Black;
+  }
+  FastLED.show();
+}
+
+
 float fscale(float originalMin, float originalMax, float newBegin, float newEnd, float inputValue, float curve) {
   float OriginalRange = 0;
   float NewRange = 0;
@@ -110,18 +99,7 @@ float fscale(float originalMin, float originalMax, float newBegin, float newEnd,
   return rangedValue;
 }
 
-void setup() {
-  Serial.begin(9600);
-  Serial.println(CRGB::Red);
-  analogReference(EXTERNAL);
-  FastLED.addLeds < LED_TYPE, LED_PIN, COLOR_ORDER > (strip, NUMBER_OF_PIXELS);
-  for (int x = 0; x < NUMBER_OF_PIXELS; x++) {
-    strip[x] = CRGB::Black;
-  }
-  FastLED.show();
-}
-
-void loop() {
+float soundMeasurement() {
   unsigned long startMillis = millis(); // Start of sample window
   float peakToPeak = 0; // peak-to-peak level
   unsigned int signalMax = 0;
@@ -131,7 +109,7 @@ void loop() {
   // collect data for length of sample window (in mS)
   while (millis() - startMillis < SAMPLE_WINDOW_TIME) {
     sample = analogRead(MIC_PIN);
-    if (sample < 1024) { // toss out spurious readings 
+    if (sample < 1024) { // toss out spurious readings
       if (sample > signalMax) {
         signalMax = sample; // save just the max levels
       } else if (sample < signalMin) {
@@ -140,7 +118,11 @@ void loop() {
     }
   }
   peakToPeak = signalMax - signalMin; // max  min = peak-peak amplitude
+  return peakToPeak;
+}
 
+int pixelDisplay(float peakToPeak) {
+  unsigned int c;
   //Colorize the Good Pixels
   for (int i = 0; i <= ZONE_3_PIXEL_QUANTITY - 1; i++) {
     strip[i] = CHSV(ZONE_3_HUE, SATURATION, BRIGHTNESS);
@@ -172,6 +154,17 @@ void loop() {
   }
 
   FastLED.show();
+  return 0;
+}
+
+void counterDisplay(int zone) {
+  
+}
+
+void loop() {
+  float averageLevel = soundMeasurement();
+  unsigned int zone = pixelDisplay(averageLevel);
+  pixelDisplay(zone);
 }
 
 
