@@ -23,3 +23,9 @@ fscale function:
 Floating Point Autoscale Function V0.1
 Written by Paul Badger 2007
 Modified from code by Greg Shakar
+
+
+Hardware:
+https://www.adafruit.com/product/1268
+https://www.adafruit.com/product/1270
+https://www.amazon.com/Elegoo-EL-CB-003-ATmega2560-ATMEGA16U2-Arduino/dp/B01H4ZLZLQ/
