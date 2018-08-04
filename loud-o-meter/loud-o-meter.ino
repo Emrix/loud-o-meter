@@ -1,14 +1,18 @@
 //Libraries
 #include "FastLED.h"
 #include <math.h>
+#include <Wire.h> // Enable this line if using Arduino Uno, Mega, etc.
+#include <Adafruit_GFX.h>
+#include "Adafruit_LEDBackpack.h"
+
 
 //Constants (Feel free to edit these)
 #define ZONE_1_PIXEL_QUANTITY 20 //Number of pixels in strand
 #define ZONE_2_PIXEL_QUANTITY 30 //Number of pixels in strand
 #define ZONE_3_PIXEL_QUANTITY 50 //Number of pixels in strand
 #define ZONE_1_HUE 0 //Color for the "Too Loud" section of the strip
-#define ZONE_2_HUE 170 //Color for the "Getting" section of the strip
-#define ZONE_3_HUE 21 //Color for the "Just right" section of the strip
+#define ZONE_2_HUE 50 //Color for the "Getting" section of the strip
+#define ZONE_3_HUE 100 //Color for the "Just right" section of the strip
 #define SATURATION 255 //Saturation of all colors in the LED strip
 #define BRIGHTNESS 255 //Brightness of all colors in the LED strip
 #define LED_TYPE WS2811 //Type of LED strip used
@@ -23,28 +27,55 @@
 #define COUNTING_THRESHOLD 4 //The volume has to be at least this loud before the counters will increment
 
 
-//Input Vars
-const int NUMBER_OF_PIXELS = ((ZONE_1_PIXEL_QUANTITY) + (ZONE_2_PIXEL_QUANTITY + ZONE_3_PIXEL_QUANTITY));
-int SENSITIVITY = 30;
-int SAMPLE_TIME = 30;
-int ANIMATION_TYPE = 30;
-int RESET = 30;
-
 //Global Vars
+const int NUMBER_OF_PIXELS = ((ZONE_1_PIXEL_QUANTITY) + (ZONE_2_PIXEL_QUANTITY + ZONE_3_PIXEL_QUANTITY));
 unsigned int sample;
 CRGB strip[NUMBER_OF_PIXELS];
+Adafruit_7segment zone1Counter = Adafruit_7segment();
+//Adafruit_7segment zone2Counter = Adafruit_7segment();
+Adafruit_7segment zone3Counter = Adafruit_7segment();
+int zone1CounterQuantity;
+//int zone2CounterQuantity;
+int zone3CounterQuantity;
+int testCounter = 0;
+int testCounter1 = 0;
+
+
+
+//Functions
+unsigned int soundMeasurement();
+unsigned int pixelDisplay(float);
+void counterDisplay(int);
+float fscale(float, float, float, float, float, float);
+
 
 
 void setup() {
   Serial.begin(9600);
-  Serial.println(CRGB::Red);
   analogReference(EXTERNAL);
   FastLED.addLeds < LED_TYPE, LED_PIN, COLOR_ORDER > (strip, NUMBER_OF_PIXELS);
   for (int x = 0; x < NUMBER_OF_PIXELS; x++) {
     strip[x] = CRGB::Black;
   }
   FastLED.show();
+  zone1Counter.begin(0x70);
+  //zone2Counter.begin(0x75);
+  zone3Counter.begin(0x71);
+  zone1CounterQuantity = 0;
+  //zone2CounterQuantity = 0;
+  zone3CounterQuantity = 0;
 }
+
+
+
+void loop() {
+  Serial.println(testCounter);
+  Serial.println(testCounter1);
+  unsigned int averageLevel = soundMeasurement();
+  unsigned int zone = pixelDisplay(averageLevel);
+  counterDisplay(zone);
+}
+
 
 
 float fscale(float originalMin, float originalMax, float newBegin, float newEnd, float inputValue, float curve) {
@@ -99,9 +130,9 @@ float fscale(float originalMin, float originalMax, float newBegin, float newEnd,
   return rangedValue;
 }
 
-float soundMeasurement() {
+unsigned int soundMeasurement() {
   unsigned long startMillis = millis(); // Start of sample window
-  float peakToPeak = 0; // peak-to-peak level
+  unsigned int peakToPeak = 0; // peak-to-peak level
   unsigned int signalMax = 0;
   unsigned int signalMin = 1023;
   unsigned int c, y;
@@ -118,10 +149,11 @@ float soundMeasurement() {
     }
   }
   peakToPeak = signalMax - signalMin; // max  min = peak-peak amplitude
+  
   return peakToPeak;
 }
 
-int pixelDisplay(float peakToPeak) {
+unsigned int pixelDisplay(float peakToPeak) {
   unsigned int c;
   //Colorize the Good Pixels
   for (int i = 0; i <= ZONE_3_PIXEL_QUANTITY - 1; i++) {
@@ -154,17 +186,42 @@ int pixelDisplay(float peakToPeak) {
   }
 
   FastLED.show();
-  return 0;
-}
-
-void counterDisplay(int zone) {
   
+  unsigned int zone;
+  if (c > 0) {
+    zone = 3;
+  }
+  if (c > (ZONE_3_PIXEL_QUANTITY)) {
+    zone = 2;
+  }
+  if (c > (ZONE_3_PIXEL_QUANTITY + ZONE_2_PIXEL_QUANTITY)) {
+    zone = 1;
+  }
+  return zone;
 }
 
-void loop() {
-  float averageLevel = soundMeasurement();
-  unsigned int zone = pixelDisplay(averageLevel);
-  pixelDisplay(zone);
+void counterDisplay(unsigned int zone) {
+  switch (zone) {
+    case 1:
+      zone1CounterQuantity += 1;
+      break;
+    case 2:
+      //zone2CounterQuantity++;
+      break;
+    case 3:
+      zone3CounterQuantity++;
+      break;
+    default:
+      //If it ever hits this, we got something bad going on...
+      break;
+  }
+  if (zone == 1) {testCounter++;}
+  if (zone == 3) {testCounter1++;}
+    
+  zone1Counter.print(testCounter, DEC);
+  //zone2Counter.print(zone2CounterQuantity, DEC);
+  zone3Counter.print(testCounter1, DEC);
+  zone1Counter.writeDisplay();
+  //zone2Counter.writeDisplay();
+  zone3Counter.writeDisplay();
 }
-
-
