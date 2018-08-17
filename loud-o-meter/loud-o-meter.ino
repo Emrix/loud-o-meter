@@ -21,10 +21,12 @@
 #define MIC_PIN A0 //Microphone is attached to this analog pin
 #define LED_PIN 13 //LED strand is connected to this pin
 
-#define SAMPLE_WINDOW_TIME 10 //Sample window for average level
+#define SAMPLE_WINDOW_TIME 10000 //Sample window for average level //Currently set to 10 Seconds
 #define INPUT_FLOOR 10 //Lower range of mic input
 #define INPUT_CEILING 30 //Max range of mic input, the lower the value the more sensitive (1023 = max)
 #define COUNTING_THRESHOLD 4 //The volume has to be at least this loud before the counters will increment
+
+#define COUNTING_MULTIPLE 1 //The amount of times that the system needs to sample the audio before it will count
 
 
 //Global Vars
@@ -39,6 +41,7 @@ int zone1CounterQuantity;
 int zone3CounterQuantity;
 int testCounter = 0;
 int testCounter1 = 0;
+int loopTime = 0;
 
 
 
@@ -73,7 +76,12 @@ void loop() {
   Serial.println(testCounter1);
   unsigned int averageLevel = soundMeasurement();
   unsigned int zone = pixelDisplay(averageLevel);
-  counterDisplay(zone);
+  if (loopTime >= (COUNTING_MULTIPLE - 1) || zone == 1) {
+    counterDisplay(zone);
+    loopTime = 0;
+  } else {
+    loopTime++;
+  }
 }
 
 
@@ -187,8 +195,8 @@ unsigned int pixelDisplay(float peakToPeak) {
 
   FastLED.show();
   
-  unsigned int zone;
-  if (c > 0) {
+  unsigned int zone = 0;
+  if (c > COUNTING_THRESHOLD) {
     zone = 3;
   }
   if (c > (ZONE_3_PIXEL_QUANTITY)) {

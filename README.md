@@ -29,3 +29,7 @@ Hardware:
 https://www.adafruit.com/product/1268
 https://www.adafruit.com/product/1270
 https://www.amazon.com/Elegoo-EL-CB-003-ATmega2560-ATMEGA16U2-Arduino/dp/B01H4ZLZLQ/
+
+
+
+https://learn.adafruit.com/adafruit-led-backpack/connecting-multiple-backpacks
