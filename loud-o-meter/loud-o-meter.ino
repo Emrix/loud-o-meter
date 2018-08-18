@@ -1,47 +1,45 @@
 //Libraries
 #include "FastLED.h"
 #include <math.h>
-#include <Wire.h> // Enable this line if using Arduino Uno, Mega, etc.
+#include <Wire.h>
 #include <Adafruit_GFX.h>
 #include "Adafruit_LEDBackpack.h"
 
 
 //Constants (Feel free to edit these)
-#define ZONE_1_PIXEL_QUANTITY 20 //Number of pixels in strand
-#define ZONE_2_PIXEL_QUANTITY 30 //Number of pixels in strand
-#define ZONE_3_PIXEL_QUANTITY 50 //Number of pixels in strand
-#define ZONE_1_HUE 0 //Color for the "Too Loud" section of the strip
-#define ZONE_2_HUE 50 //Color for the "Getting" section of the strip
-#define ZONE_3_HUE 100 //Color for the "Just right" section of the strip
-#define SATURATION 255 //Saturation of all colors in the LED strip
-#define BRIGHTNESS 255 //Brightness of all colors in the LED strip
-#define LED_TYPE WS2811 //Type of LED strip used
-#define COLOR_ORDER GRB //Order of the Colors in the Pixel
+#define ZONE_RED_PIXEL_QUANTITY 5
+#define ZONE_YELLOW_PIXEL_QUANTITY 15
+#define ZONE_GREEN_PIXEL_QUANTITY 30
+#define ZONE_RED_HUE 0
+#define ZONE_YELLOW_HUE 50
+#define ZONE_GREEN_HUE 100
+#define SATURATION 255
+#define BRIGHTNESS 100
+#define LED_TYPE WS2811
+#define COLOR_ORDER GRB
 
-#define MIC_PIN A0 //Microphone is attached to this analog pin
-#define LED_PIN 13 //LED strand is connected to this pin
+#define MIC_PIN A0
+#define LED_PIN 12
 
-#define SAMPLE_WINDOW_TIME 10000 //Sample window for average level //Currently set to 10 Seconds
+#define SAMPLE_WINDOW_TIME 100
 #define INPUT_FLOOR 10 //Lower range of mic input
 #define INPUT_CEILING 30 //Max range of mic input, the lower the value the more sensitive (1023 = max)
-#define COUNTING_THRESHOLD 4 //The volume has to be at least this loud before the counters will increment
+#define COUNTING_MIN_THRESHOLD 10 //The volume has to be at least this many pixels before the counters will increment
 
 #define COUNTING_MULTIPLE 1 //The amount of times that the system needs to sample the audio before it will count
 
 
 //Global Vars
-const int NUMBER_OF_PIXELS = ((ZONE_1_PIXEL_QUANTITY) + (ZONE_2_PIXEL_QUANTITY + ZONE_3_PIXEL_QUANTITY));
+const int NUMBER_OF_PIXELS = ((ZONE_RED_PIXEL_QUANTITY) + (ZONE_YELLOW_PIXEL_QUANTITY + ZONE_GREEN_PIXEL_QUANTITY));
 unsigned int sample;
 CRGB strip[NUMBER_OF_PIXELS];
-Adafruit_7segment zone1Counter = Adafruit_7segment();
-//Adafruit_7segment zone2Counter = Adafruit_7segment();
-Adafruit_7segment zone3Counter = Adafruit_7segment();
-int zone1CounterQuantity;
-//int zone2CounterQuantity;
-int zone3CounterQuantity;
-int testCounter = 0;
-int testCounter1 = 0;
-int loopTime = 0;
+Adafruit_7segment zoneRedCounter = Adafruit_7segment();
+//Adafruit_7segment zoneYellowCounter = Adafruit_7segment();
+Adafruit_7segment zoneGreenCounter = Adafruit_7segment();
+int zoneRedCounterQuantity;
+//int zoneYellowCounterQuantity;
+int zoneGreenCounterQuantity;
+int loopNumber = 0;
 
 
 
@@ -61,26 +59,26 @@ void setup() {
     strip[x] = CRGB::Black;
   }
   FastLED.show();
-  zone1Counter.begin(0x70);
-  //zone2Counter.begin(0x75);
-  zone3Counter.begin(0x71);
-  zone1CounterQuantity = 0;
-  //zone2CounterQuantity = 0;
-  zone3CounterQuantity = 0;
+  zoneRedCounter.begin(0x70);
+  //zoneYellowCounter.begin(0x75);
+  zoneGreenCounter.begin(0x71);
+  zoneRedCounterQuantity = 0;
+  //zoneYellowCounterQuantity = 0;
+  zoneGreenCounterQuantity = 0;
 }
 
 
 
 void loop() {
-  Serial.println(testCounter);
-  Serial.println(testCounter1);
+  Serial.println(zoneRedCounterQuantity);
+  Serial.println(zoneGreenCounterQuantity);
   unsigned int averageLevel = soundMeasurement();
   unsigned int zone = pixelDisplay(averageLevel);
-  if (loopTime >= (COUNTING_MULTIPLE - 1) || zone == 1) {
+  if (loopNumber >= (COUNTING_MULTIPLE - 1) || zone == 1) {
     counterDisplay(zone);
-    loopTime = 0;
+    loopNumber = 0;
   } else {
-    loopTime++;
+    loopNumber++;
   }
 }
 
@@ -144,7 +142,6 @@ unsigned int soundMeasurement() {
   unsigned int signalMax = 0;
   unsigned int signalMin = 1023;
   unsigned int c, y;
-
   // collect data for length of sample window (in mS)
   while (millis() - startMillis < SAMPLE_WINDOW_TIME) {
     sample = analogRead(MIC_PIN);
@@ -157,28 +154,22 @@ unsigned int soundMeasurement() {
     }
   }
   peakToPeak = signalMax - signalMin; // max  min = peak-peak amplitude
-  
   return peakToPeak;
 }
 
 unsigned int pixelDisplay(float peakToPeak) {
   unsigned int c;
-  //Colorize the Good Pixels
-  for (int i = 0; i <= ZONE_3_PIXEL_QUANTITY - 1; i++) {
-    strip[i] = CHSV(ZONE_3_HUE, SATURATION, BRIGHTNESS);
+  //Colorize All of the Pixels
+  for (int i = 0; i <= ZONE_GREEN_PIXEL_QUANTITY - 1; i++) {
+    strip[i] = CHSV(ZONE_GREEN_HUE, SATURATION, BRIGHTNESS);
   }
-  //Colorize the Warning Pixels
-  for (int i = 0; i <= ZONE_2_PIXEL_QUANTITY - 1; i++) {
-    strip[i + ZONE_3_PIXEL_QUANTITY] = CHSV(ZONE_2_HUE, SATURATION, BRIGHTNESS);
+  for (int i = 0; i <= ZONE_YELLOW_PIXEL_QUANTITY - 1; i++) {
+    strip[i + ZONE_GREEN_PIXEL_QUANTITY] = CHSV(ZONE_YELLOW_HUE, SATURATION, BRIGHTNESS);
   }
-  //Colorize the Bad Pixels
-  for (int i = 0; i <= ZONE_1_PIXEL_QUANTITY - 1; i++) {
-    strip[i + ZONE_2_PIXEL_QUANTITY + ZONE_3_PIXEL_QUANTITY] = CHSV(ZONE_1_HUE, SATURATION, BRIGHTNESS);
+  for (int i = 0; i <= ZONE_RED_PIXEL_QUANTITY - 1; i++) {
+    strip[i + ZONE_YELLOW_PIXEL_QUANTITY + ZONE_GREEN_PIXEL_QUANTITY] = CHSV(ZONE_RED_HUE, SATURATION, BRIGHTNESS);
   }
-
-  //Scale the input logarithmically instead of linearly
-  c = fscale(INPUT_FLOOR, INPUT_CEILING, NUMBER_OF_PIXELS, 0, peakToPeak, 2);
-
+  c = fscale(INPUT_FLOOR, INPUT_CEILING, NUMBER_OF_PIXELS, 0, peakToPeak, 2);  //Scale the input logarithmically instead of linearly
   if (c <= NUMBER_OF_PIXELS) { // Fill partial column with off pixels
     uint8_t from = NUMBER_OF_PIXELS;
     uint8_t to = NUMBER_OF_PIXELS - c;
@@ -192,17 +183,15 @@ unsigned int pixelDisplay(float peakToPeak) {
       strip[i] = CRGB::Black;
     }
   }
-
   FastLED.show();
-  
   unsigned int zone = 0;
-  if (c > COUNTING_THRESHOLD) {
+  if (c > COUNTING_MIN_THRESHOLD) {
     zone = 3;
   }
-  if (c > (ZONE_3_PIXEL_QUANTITY)) {
+  if (c > (ZONE_GREEN_PIXEL_QUANTITY)) {
     zone = 2;
   }
-  if (c > (ZONE_3_PIXEL_QUANTITY + ZONE_2_PIXEL_QUANTITY)) {
+  if (c > (ZONE_GREEN_PIXEL_QUANTITY + ZONE_YELLOW_PIXEL_QUANTITY)) {
     zone = 1;
   }
   return zone;
@@ -211,25 +200,25 @@ unsigned int pixelDisplay(float peakToPeak) {
 void counterDisplay(unsigned int zone) {
   switch (zone) {
     case 1:
-      zone1CounterQuantity += 1;
+      zoneRedCounterQuantity += 1;
       break;
     case 2:
-      //zone2CounterQuantity++;
+      //zoneYellowCounterQuantity++;
       break;
     case 3:
-      zone3CounterQuantity++;
+      zoneGreenCounterQuantity++;
       break;
     default:
       //If it ever hits this, we got something bad going on...
       break;
   }
-  if (zone == 1) {testCounter++;}
-  if (zone == 3) {testCounter1++;}
+  if (zone == 1) {zoneRedCounterQuantity++;}
+  if (zone == 3) {zoneGreenCounterQuantity++;}
     
-  zone1Counter.print(testCounter, DEC);
-  //zone2Counter.print(zone2CounterQuantity, DEC);
-  zone3Counter.print(testCounter1, DEC);
-  zone1Counter.writeDisplay();
-  //zone2Counter.writeDisplay();
-  zone3Counter.writeDisplay();
+  zoneRedCounter.print(zoneRedCounterQuantity, DEC);
+  //zoneYellowCounter.print(zoneYellowCounterQuantity, DEC);
+  zoneGreenCounter.print(zoneGreenCounterQuantity, DEC);
+  zoneRedCounter.writeDisplay();
+  //zoneYellowCounter.writeDisplay();
+  zoneGreenCounter.writeDisplay();
 }
