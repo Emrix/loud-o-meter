@@ -8,20 +8,20 @@
 
 //Constants (Feel free to edit these)
 #define ZONE_RED_PIXEL_QUANTITY 5
-#define ZONE_YELLOW_PIXEL_QUANTITY 15
-#define ZONE_GREEN_PIXEL_QUANTITY 30
+#define ZONE_YELLOW_PIXEL_QUANTITY 25
+#define ZONE_GREEN_PIXEL_QUANTITY 20
 #define ZONE_RED_HUE 0
 #define ZONE_YELLOW_HUE 50
 #define ZONE_GREEN_HUE 100
 #define SATURATION 255
-#define BRIGHTNESS 100
+#define BRIGHTNESS 50
 #define LED_TYPE WS2811
 #define COLOR_ORDER GRB
 
 #define MIC_PIN A0
 #define LED_PIN 12
 
-#define SAMPLE_WINDOW_TIME 100
+#define SAMPLE_WINDOW_TIME 10000
 #define INPUT_FLOOR 10 //Lower range of mic input
 #define INPUT_CEILING 30 //Max range of mic input, the lower the value the more sensitive (1023 = max)
 #define COUNTING_MIN_THRESHOLD 10 //The volume has to be at least this many pixels before the counters will increment
@@ -30,17 +30,17 @@
 
 
 //Global Vars
+#define RED 4
+#define YELLOW 3
+#define GREEN 2
+unsigned int loopNumber = 0;
 const int NUMBER_OF_PIXELS = ((ZONE_RED_PIXEL_QUANTITY) + (ZONE_YELLOW_PIXEL_QUANTITY + ZONE_GREEN_PIXEL_QUANTITY));
 unsigned int sample;
 CRGB strip[NUMBER_OF_PIXELS];
-Adafruit_7segment zoneRedCounter = Adafruit_7segment();
-//Adafruit_7segment zoneYellowCounter = Adafruit_7segment();
-Adafruit_7segment zoneGreenCounter = Adafruit_7segment();
-int zoneRedCounterQuantity;
-//int zoneYellowCounterQuantity;
-int zoneGreenCounterQuantity;
-int loopNumber = 0;
-
+//Ok, so for some reason the system doesn't seem to like to increment on the first two indexes in the array
+//so we are using the last three (2,3,4) in order to keep track of things (hence the RYB as 432 respectively)
+Adafruit_7segment zoneCounters[5] = {Adafruit_7segment(),Adafruit_7segment(),Adafruit_7segment(),Adafruit_7segment(),Adafruit_7segment()};
+unsigned int zoneCounterQuantity[5] = {0,0,0,0,0};
 
 
 //Functions
@@ -59,19 +59,20 @@ void setup() {
     strip[x] = CRGB::Black;
   }
   FastLED.show();
-  zoneRedCounter.begin(0x70);
-  //zoneYellowCounter.begin(0x75);
-  zoneGreenCounter.begin(0x71);
-  zoneRedCounterQuantity = 0;
-  //zoneYellowCounterQuantity = 0;
-  zoneGreenCounterQuantity = 0;
+  
+  zoneCounters[RED].begin(0x71);
+  zoneCounters[GREEN].begin(0x70);
+  zoneCounters[RED].print(0, DEC);
+  zoneCounters[RED].writeDisplay();
+  zoneCounters[GREEN].print(0, DEC);
+  zoneCounters[GREEN].writeDisplay();
 }
 
 
 
 void loop() {
-  Serial.println(zoneRedCounterQuantity);
-  Serial.println(zoneGreenCounterQuantity);
+  //Serial.println(zoneRedCounterQuantity);
+  //Serial.println(zoneGreenCounterQuantity);
   unsigned int averageLevel = soundMeasurement();
   unsigned int zone = pixelDisplay(averageLevel);
   if (loopNumber >= (COUNTING_MULTIPLE - 1) || zone == 1) {
@@ -184,41 +185,31 @@ unsigned int pixelDisplay(float peakToPeak) {
     }
   }
   FastLED.show();
-  unsigned int zone = 0;
-  if (c > COUNTING_MIN_THRESHOLD) {
-    zone = 3;
+  int zone = -1;
+  c = 50 - c;
+    //Serial.println(c);
+  if (c >= COUNTING_MIN_THRESHOLD) {
+    zone = GREEN;
   }
   if (c > (ZONE_GREEN_PIXEL_QUANTITY)) {
-    zone = 2;
+    zone = YELLOW;
   }
   if (c > (ZONE_GREEN_PIXEL_QUANTITY + ZONE_YELLOW_PIXEL_QUANTITY)) {
-    zone = 1;
+    zone = RED;
   }
   return zone;
 }
 
-void counterDisplay(unsigned int zone) {
-  switch (zone) {
-    case 1:
-      zoneRedCounterQuantity += 1;
-      break;
-    case 2:
-      //zoneYellowCounterQuantity++;
-      break;
-    case 3:
-      zoneGreenCounterQuantity++;
-      break;
-    default:
-      //If it ever hits this, we got something bad going on...
-      break;
+
+void counterDisplay(int zone) {
+  if (zone >= 0) {
+  zoneCounterQuantity[zone]++;
+  Serial.print(zone);
+  Serial.print(" - ");
+  Serial.println(zoneCounterQuantity[zone]);
+  unsigned int tempZoneCount = zoneCounterQuantity[zone];
+  zoneCounters[zone].print(tempZoneCount, DEC);
+  zoneCounters[zone].writeDisplay();
   }
-  if (zone == 1) {zoneRedCounterQuantity++;}
-  if (zone == 3) {zoneGreenCounterQuantity++;}
-    
-  zoneRedCounter.print(zoneRedCounterQuantity, DEC);
-  //zoneYellowCounter.print(zoneYellowCounterQuantity, DEC);
-  zoneGreenCounter.print(zoneGreenCounterQuantity, DEC);
-  zoneRedCounter.writeDisplay();
-  //zoneYellowCounter.writeDisplay();
-  zoneGreenCounter.writeDisplay();
 }
+
